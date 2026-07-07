@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ai-site-builder
+    env: node
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+    plan: free
