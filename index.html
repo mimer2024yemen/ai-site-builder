@@ -176,13 +176,22 @@ textarea:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(59,130,246,
   <div class="setting-row"><span class="setting-label">عدد المحادثات</span><span class="setting-value" id="convCount2">0</span></div>
   <div class="setting-row"><span class="setting-label">الإصدار</span><span class="setting-value">v3.0.0</span></div>
   <div class="setting-row"><span class="setting-label">الاستضافة</span><span class="setting-value" style="color:var(--green)">GitHub Pages</span></div>
+  <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">🔑 مفتاح OpenRouter API</div>
+    <div style="display:flex;gap:8px">
+      <input type="password" id="apiKeyInput" value="" placeholder="sk-or-v1-..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:monospace;font-size:12px;outline:none;direction:ltr" />
+      <button onclick="saveApiKey()" style="background:var(--blue);border:none;border-radius:8px;padding:8px 16px;color:#fff;font-family:inherit;font-size:12px;cursor:pointer">حفظ</button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">احصل على مفتاح مجاني من <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--blue)">openrouter.ai/keys</a></div>
+  </div>
   <button class="settings-close" onclick="closeSettings()">إغلاق</button>
   <button class="settings-close" style="margin-top:8px;border-color:rgba(239,68,68,.3);color:var(--red)" onclick="if(confirm('مسح كل المحادثات؟')){localStorage.clear();location.reload()}">🗑️ مسح كل البيانات</button>
 </div></div>
 <div class="toast" id="toast"></div>
 
 <script>
-const API_KEY='sk-or-v1-***';
+// مفتاح API - يُحفظ في localStorage
+let API_KEY=localStorage.getItem('openrouter_key')||'';
 const API_URL='https://openrouter.ai/api/v1/chat/completions';
 const SYSTEM=`أنت "مُنشئ المواقع" - وكيل ذكاء اصطناعي متخصص في إنشاء المواقع والتطبيقات.
 شخصيتك: خبير تقني محترف ومتحمس، تتحدث بالعربية مع المصطلحات التقنية بالإنجليزية.
@@ -191,7 +200,9 @@ const SYSTEM=`أنت "مُنشئ المواقع" - وكيل ذكاء اصطنا�
 الكود يجب أن يعمل مباشرة في المتصفح.`;
 
 let chatHistory=[],conversations=JSON.parse(localStorage.getItem('sb_convos')||'[]'),activeId=null,isLoading=false;
-renderList();updateStats();document.getElementById('input').focus();
+renderList();updateStats();
+if(!API_KEY){showSettings();toast('أدخل مفتاح OpenRouter API للبدء');}
+else{document.getElementById('input').focus();}
 const sm=localStorage.getItem('sb_model');if(sm)document.getElementById('modelSelect').value=sm;updateModelName();
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
@@ -219,15 +230,28 @@ function rmCursor(){document.querySelectorAll('.cursor-blink').forEach(c=>c.remo
 function showTyping(){const d=document.createElement('div');d.className='msg';d.id='typing';d.innerHTML='<div class="msg-av ai">🤖</div><div class="msg-b ai"><div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div><span style="font-size:11px;color:var(--text3);margin-right:6px">يكتب...</span></div></div>';document.getElementById('messages').appendChild(d);scrollB()}
 function rmTyping(){const e=document.getElementById('typing');if(e)e.remove()}
 
+function saveApiKey(){
+  const key=document.getElementById('apiKeyInput').value.trim();
+  if(!key){toast('أدخل مفتاح API');return}
+  localStorage.setItem('openrouter_key',key);
+  API_KEY=key;
+  toast('تم حفظ المفتاح بنجاح ✅');
+}
+
 async function send(){
   const text=document.getElementById('input').value.trim();if(!text||isLoading)return;
+  if(!API_KEY){
+    showSettings();
+    toast('⚠️ أدخل مفتاح OpenRouter API أولاً');
+    return;
+  }
   showChat();addMsg('user',text);chatHistory.push({role:'user',content:text});
   document.getElementById('input').value='';document.getElementById('input').style.height='auto';
   isLoading=true;document.getElementById('sendBtn').disabled=true;
   document.getElementById('topbarTitle').textContent=text.substring(0,35)+(text.length>35?'...':'');
   showTyping();
   try{
-    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'***'+API_KEY,'HTTP-Referer':'https://mimer2024yemen.github.io/ai-site-builder','X-Title':'AI Site Builder'},body:JSON.stringify({model:getModel(),messages:[{role:'system',content:SYSTEM},...chatHistory.slice(0,-1).map(m=>({role:m.role,content:m.content})),{role:'user',content:text}],temperature:.7,max_tokens:4096,stream:true})});
+    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+API_KEY,'HTTP-Referer':'https://mimer2024yemen.github.io/ai-site-builder','X-Title':'AI Site Builder'},body:JSON.stringify({model:getModel(),messages:[{role:'system',content:SYSTEM},...chatHistory.slice(0,-1).map(m=>({role:m.role,content:m.content})),{role:'user',content:text}],temperature:.7,max_tokens:4096,stream:true})});
     rmTyping();addMsg('assistant','');const reader=res.body.getReader();const decoder=new TextDecoder();let full='',buf='';
     while(true){const{done,value}=await reader.read();if(done)break;buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';for(const line of lines){if(line.startsWith('data: ')){const d=line.slice(6).trim();if(d==='[DONE]')continue;try{const p=JSON.parse(d);const c=p.choices?.[0]?.delta?.content;if(c){full+=c;updateLast(full)}}catch(e){}}}}
     rmCursor();if(full){chatHistory.push({role:'assistant',content:full});autoSave()}
@@ -240,7 +264,7 @@ function closePreview(){document.getElementById('previewOverlay').classList.remo
 function switchPT(t,b){document.querySelectorAll('.preview-tab').forEach(t=>t.classList.remove('active'));b.classList.add('active');document.getElementById('previewFrame').style.display=t==='preview'?'block':'none';document.getElementById('previewCode').style.display=t==='code'?'block':'none'}
 function setDevice(w,b){document.querySelectorAll('.device-btn').forEach(b=>b.classList.remove('active'));b.classList.add('active');const f=document.getElementById('previewFrame');f.style.width=w;f.style.margin=w==='100%'?'0':'0 auto'}
 function exportChat(){if(!chatHistory.length){toast('لا توجد محادثة للتصدير');return}const t=chatHistory.map(m=>(m.role==='user'?'👤 المستخدم':'🤖 الوكيل')+':\n'+m.content).join('\n\n---\n\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain;charset=utf-8'}));a.download='chat_'+new Date().toISOString().slice(0,10)+'.txt';a.click();toast('تم التصدير بنجاح')}
-function showSettings(){document.getElementById('settingsOverlay').classList.add('show');updateStats()}
+function showSettings(){document.getElementById('settingsOverlay').classList.add('show');updateStats();document.getElementById('apiKeyInput').value=API_KEY||'';}
 function closeSettings(){document.getElementById('settingsOverlay').classList.remove('show')}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closePreview();closeSettings()}});
 </script>
