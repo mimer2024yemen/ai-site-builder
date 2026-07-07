@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node test.js",
+    "old:start": "next start",
+    "old:dev": "next dev",
+    "old:build": "next build"
   },
   "dependencies": {
     "next": "^15.1.0",
