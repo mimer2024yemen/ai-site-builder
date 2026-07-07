@@ -640,7 +640,13 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { message, history, model } = JSON.parse(body);
+        let parsed;
+        try { parsed = JSON.parse(body); } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'طلب غير صالح', details: 'JSON غير صحيح' }));
+          return;
+        }
+        const { message, history, model } = parsed;
         if (!message) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'الرسالة مطلوبة' })); return; }
         const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'مفتاح API غير مُعرَّف' })); return; }
